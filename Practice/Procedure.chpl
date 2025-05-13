@@ -140,3 +140,19 @@ proc func6(out a:int) {                                 // "out" keyword tell th
 func6(aa);
 
 writeln("The value of aa is now : ",aa);
+
+
+
+
+
+
+proc ffff(a : int) {
+    writeln("Hey");
+    writeln(gggg(a));                                   // Calling the function that is declared later is allowed. but not for variable
+}
+
+ffff(8989);
+
+proc gggg(a : int) {
+    return a * 22;
+}
