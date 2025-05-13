@@ -1,5 +1,8 @@
 var a: int;
 // var a: real(32);             // multiple definition
+{
+    const i = 0;                // ok
+}
 writeln("a = ",a);              // initialized to be 0
 
 var b = 1.612;                  // type: real(64)
