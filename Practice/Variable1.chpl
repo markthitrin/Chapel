@@ -61,3 +61,6 @@ var f = 1.0, g, h: int, i, j = 1.0, l: real;
 
 // string                       // immutable UTF-8 string   default value is ""
 // bytes                        // immutable raw bytes      default value is ""
+
+// The expression + - * / % ++ -- += -= *= /= %= is exactly the same as C and C++
+// so as the bit operations & ` ^ ~  << >> 
