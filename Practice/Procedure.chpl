@@ -156,3 +156,19 @@ ffff(8989);
 proc gggg(a : int) {
     return a * 22;
 }
+
+
+
+
+proc hh(a : int) {
+    writeln("Called from hh(a:int)");
+}
+
+proc hh(a) {
+    writeln("Called from hh(a)");
+}
+
+hh(3);                                                      // hh(a:int)
+hh(3.0);                                                    // hh(a)
+hh("hi");                                                   // hh(a)
+                                                            // resolve like c++
