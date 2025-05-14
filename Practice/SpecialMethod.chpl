@@ -28,6 +28,10 @@ var a :R;
   var a2:R2;
 }
 
+// proc R2.func3() {
+//   writeln("this is secondary Method");                                        // error : R2 is no known
+// }
+                                                                                 // tertiary method, the function declare outside the scope the class definition
 
 
 
