@@ -21,6 +21,10 @@ proc C.sum_sum(b:int) {                                     // method can be def
 
 writeln(c.sum_sum(89));
 
+// proc C.sum_sum(b:int) {                                  // error : multiple overload
+//     writeln("Something changed");   
+// }
+
 
 class D : C {                                               // class derive
     var c = 1.03, d =9.0;
