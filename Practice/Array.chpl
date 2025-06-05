@@ -180,3 +180,9 @@ forall (i,j) in ProbSpace do
     Y[i,j][k] = i*10 + j + k/10.0;
 
 writeln("Y is:\n", Y);
+
+
+
+
+var AA : [2..10,1..10] real;
+writeln(AA.reindex(1..9,101..110).domain);
