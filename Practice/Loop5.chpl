@@ -15,7 +15,7 @@ writeln("sum : ", total);
 coforall loc in Locales {                       // loop to each locales avaliable
     on loc {                                    // in that locale
         coforall tid in 1..here.maxTaskPar {    // create task as much as the number of th thread avaliable
-            // Do something 
+            writeln("Printing task from loc : ", loc, " tid :", tid);
         }
     }
 }

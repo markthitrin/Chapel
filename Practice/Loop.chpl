@@ -56,7 +56,7 @@ var A = [1.9,2,9,4.0];
 for a in A {                                        // The a is the reference t the original element   
     writeln("dsfsdfs ",a);
     a *= 2;                                         // This modify the priginal element in the A too
-}
+}   
 
 for i in A.domain {                                 // The i is the index of the A, read-only copy
   A[i] += 3;                                        // ok
