@@ -95,21 +95,3 @@ override proc Tree.serialize(writer, ref serializer)
 writeln("Tree Data");
 writeln(tree);
 writeln();
-
-
-
-
-
-config const numTasks = here.maxTaskPar;
-if numTasks < 1 then
-    halt("numTasks must be a positive integer");
-config const probSize = 15;
-var A: [1..probSize] real;
-
-
-
-iter count(param: tag: iterKind, n: int, low: int = 1) {
-    where tag == iterKind.standalone {
-        coforall tid in 0..#numtask
-    }
-}

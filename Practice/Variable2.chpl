@@ -33,7 +33,12 @@ var (a,b) = t;                                                      // unpack is
 writeln(a,b);
 
 
-
+proc magnitude( (x,y,z):3*real ) {
+  return sqrt(x*x + y*y + z*z);
+}
+threeReals = (1.0, 2.0, 2.0);
+var m = magnitude(threeReals);
+writeln(m);
 
 
 proc add(a ,b, c) {

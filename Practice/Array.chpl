@@ -68,7 +68,7 @@ writeln("After decrementing B's elements, B is:\n", B, "\n");
 
 
 
-proc negateAndPrintArr(ref X: [?D] real) {                                                          // query the doamin using [?]
+proc negateAndPrintArr(ref X: [?D] real) {                                                          // query the domain using [?]
   writeln("within negateAndPrintArr, D is: ", D, "\n");
   forall (i,j) in D do
     X[i,j] = -X[i,j];

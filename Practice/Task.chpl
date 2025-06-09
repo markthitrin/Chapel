@@ -8,6 +8,18 @@ writeln("2: ### The cobegin statement ###");
 cobegin {                                                                                       // parallel in block
   writeln("2: output from spawned task 1");
   writeln("2: output from spawned task 2");
+  writeln("2: output from spawned task 2");
+
+  writeln("2: output from spawned task 3");
+
+  writeln("2: output from spawned task 4");
+
+  writeln("2: output from spawned task 5");
+
+  writeln("2: output from spawned task 6");
+
+  writeln("2: output from spawned task 7");
+
 }                                                                                               // block finish first before proceed
 writeln("2: output from main task");
 
