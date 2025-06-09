@@ -1,0 +1,6 @@
+
+
+
+proc main() {
+    writeln("hello");
+}
