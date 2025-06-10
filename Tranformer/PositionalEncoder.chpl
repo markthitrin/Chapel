@@ -10,10 +10,10 @@ class PositionalEncoder {
         for (i,j) in D {
             var subL: int = i / l;
             if j % 2 == 0 {
-                output[i,j] = tensor[i,j] + sin(subL / pow(10000, j:real / shape));
+                output[i,j] = tensor[i,j] + sin(subL / 10000.0 ** (j:real / shape));
             } 
             else {
-                output[i,j] = tensor[i,j] + cos(subL / pow(10000, j:real / shape));
+                output[i,j] = tensor[i,j] + cos(subL / 10000.0 ** (j:real / shape));
             }
         }
         return output;
@@ -21,9 +21,5 @@ class PositionalEncoder {
 
     proc predict(ref tensor: [?D] real) : [D] real {
         return forward(tensor);   
-    }
-
-    proc backward(ref gradient: [?D] real) : [D] real {
-        return gradient;
     }
 }

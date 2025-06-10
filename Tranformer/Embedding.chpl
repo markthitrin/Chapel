@@ -6,17 +6,17 @@ use Config;
 class Embedding {
     proc init(in numTokens: int) {
         domTable = {0..#numTokens, 0..#dModel};
-        domTableOpt = {0..#numTokens};
-        for i in domTableOpt {
-            tableOpt[i] = new AdamOptGradient(table[i, ..]);
-        }
+        table = Matrix(domTable);
+
         feedCount = 0;
+        domTableOpt = {0..#numTokens};
+        tableOpt = for i in domTableOpt do new AdamOptGradient1(table[i, ..]);
     }
 
-    proc forward(ref tensor: [?D] real) : [D] real {
+    proc forward(ref tensor: [?D] real) : [{D.dim(0), 0..#dModel}] real {
         domToken = D.dim(0);
         token = tensor;
-        var output = Matrix(D.dim(0),dModel);
+        var output = Matrix(D.dim(0).size, dModel);
         for i in D.dim(0) {
             output[i, ..] = table[tensor[i]:int, ..];
         }
@@ -30,14 +30,14 @@ class Embedding {
     proc backward(ref gradient: [?D] real) {
         feedCount += 1;
         for i in D.dim(0) {
-            tableOpt[token[i]].gradient += gradient[i]; 
+            tableOpt[token[i]:int].gradient += gradient[i, ..]; 
         }
     }
 
     proc updateParameter() {
         // fix to to make it individual later
         for i in domTableOpt {
-            domTableOpt[i].gradient /= feedCount;
+            tableOpt[i].gradient /= feedCount;
 
             AdamOpt(table[i, ..], tableOpt[i]);
 
@@ -51,8 +51,8 @@ class Embedding {
     
     var feedCount: int;
     var domTableOpt: domain(1);
-    var tableOpt: [domTableOpt] AdamOptGradient;
+    var tableOpt: [domTableOpt] AdamOptGradient1;
     
     var domToken: domain(1);
-    var token: [domToken] int;
+    var token: [domToken] real;
 }

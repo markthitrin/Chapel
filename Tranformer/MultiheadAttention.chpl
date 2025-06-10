@@ -10,24 +10,33 @@ class MultiheadAttention {
         domWK = {0..#qshape, 0..#dModel};
         domWV = {0..#dModel, 0..#dModel};
         domWO = {0..#dModel, 0..#dModel};
+        WQ = Matrix(domWQ);
+        WK = Matrix(domWK);
+        WV = Matrix(domWV);
+        WO = Matrix(domWO);
         HeNormalInit(WQ);
         HeNormalInit(WK);
         HeNormalInit(WV);
         HeNormalInit(WO);
 
         feedCount = 0;
-        WQOpt = new AdamOptGradient(WQ);
-        WKOpt = new AdamOptGradient(WK);
-        WVOpt = new AdamOptGradient(WV);
-        WOOpt = new AdamOptGradient(WO);
+        WQOpt = new AdamOptGradient2(WQ);
+        WKOpt = new AdamOptGradient2(WK);
+        WVOpt = new AdamOptGradient2(WV);
+        WOOpt = new AdamOptGradient2(WO);
+        
+        softmax = new Softmax();
     }
 
     proc forward(ref tensorQ: [?D] real, ref tensorK: [D] real, ref tensorV: [D] real, in l: int) : [D] real {
+        domInputQ = D;
+        domInputK = D;
+        domInputV = D;
         inputQ = tensorQ;
         inputK = tensorK;
         inputV = tensorV;
 
-        var batch: int = D.dim(0) / l;
+        var batch: int = D.dim(0).size / l;
         var qPerHead: int = qshape / head;
         var outPerHead: int = dModel / head;
         
@@ -47,7 +56,7 @@ class MultiheadAttention {
         for i in 0..#batch {
             for j in 0..#head {
                 var ij = (i * head + j);
-                A[(ij * l)..#l, ..] = dot(QT[(ij * qPerHead)..#qPerHead, ..].T, KT[(ij * qPerHead)..#qPerHead]);
+                A[(ij * l)..#l, ..] = dot(QT[(ij * qPerHead)..#qPerHead, ..].T, KT[(ij * qPerHead)..#qPerHead, ..]);
             }
         }
         A = triu(A) / sqrt(qPerHead);
@@ -61,18 +70,19 @@ class MultiheadAttention {
         for i in 0..#batch {
             output[(i * l)..#l, ..] = dot(OT[(i * dModel)..#dModel, ..].T, WO);
         }
+        return output;
     }
 
     proc predict(ref tensorQ: [?D] real, ref tensorK: [D] real, ref tensorV: [D] real, in l: int) : [D] real {
         return forward(tensorQ, tensorK, tensorV, l);
     }
 
-    proc backward(ref gradient: [?D] real) : [D] real {
+    proc backward(ref gradient: [?D] real, in l: int) : 3 * ([D] real) {
         var outGradientQ = Matrix(D);
         var outGradientK = Matrix(D);
         var outGradientV = Matrix(D);
 
-        var batch: int = D.dim(0) / l;
+        var batch: int = D.dim(0).size / l;
         var qPerHead: int = qshape / head;
         var outPerHead: int = dModel / head;
 
@@ -96,7 +106,7 @@ class MultiheadAttention {
                 VTGradient[(ij * outPerHead)..#outPerHead, ..] = dot(OT[(ij * outPerHead)..#outPerHead, ..], As[(ij * l)..#l, ..]);
             }
         }
-        AGradient = triu(softmax.backward()) / sqrt(qPerHead);
+        AGradient = triu(softmax.backward(AsGradient)) / sqrt(qPerHead);
         for i in 0..#batch {
             for j in 0..#head {
                 var ij = (i * head + j);
@@ -105,12 +115,12 @@ class MultiheadAttention {
             }
         }
         for i in 0..#batch {
-            WQGradient += dot(QTGradient[(i * qshape)..#qshape, ..], inputQ[(i * l)..#l, ..]);
-            WKGradient += dot(KTGradient[(i * qshape)..#qshape, ..], inputK[(i * l)..#l, ..]);
-            WVGradient += dot(VTGradient[(i * dModel)..#dModel, ..], inputV[(i * l)..#l, ..]);
-            outGradientQ += dot(QTGradient[(i * qshape)..#qshape, ..].T, WQ);
-            outGradientK += dot(KTGradient[(i * qshape)..#qshape, ..].T, WK);
-            outGradientV += dot(VTGradient[(i * dModel)..#dModel, ..].T, WV);
+            WQOpt.gradient += dot(QTGradient[(i * qshape)..#qshape, ..], inputQ[(i * l)..#l, ..]);
+            WKOpt.gradient += dot(KTGradient[(i * qshape)..#qshape, ..], inputK[(i * l)..#l, ..]);
+            WVOpt.gradient += dot(VTGradient[(i * dModel)..#dModel, ..], inputV[(i * l)..#l, ..]);
+            outGradientQ[(i * l)..#l, ..] = dot(QTGradient[(i * qshape)..#qshape, ..].T, WQ);
+            outGradientK[(i * l)..#l, ..] = dot(KTGradient[(i * qshape)..#qshape, ..].T, WK);
+            outGradientV[(i * l)..#l, ..] = dot(VTGradient[(i * dModel)..#dModel, ..].T, WV);
         }
         return (outGradientQ, outGradientK, outGradientV);
     }
@@ -142,13 +152,13 @@ class MultiheadAttention {
     var WV: [domWV] real;
     var WO: [domWO] real;
 
-    var feedCount = 0;
-    var WQOpt: AdamOptGradient;
-    var WKOpt: AdamOptGradient;
-    var WVOpt: AdamOptGradient;
-    var WOOpt: AdamOptGradient;
+    var feedCount: int;
+    var WQOpt: AdamOptGradient2;
+    var WKOpt: AdamOptGradient2;
+    var WVOpt: AdamOptGradient2;
+    var WOOpt: AdamOptGradient2;
 
-    var softmax: Softmax;
+    var softmax: owned Softmax;
 
     var domQT: domain(2);
     var domKT: domain(2);

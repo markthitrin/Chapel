@@ -17,22 +17,32 @@ class DecoderLayer {
         dropout2 = new DropOut(dropoutRate);
     }
 
-    proc forward(ref tensor: [?D] real) : [D] real {
+    proc forward(ref tensor: [?D] real, in l: int) : [D] real {
         var x1 = norm1.forward(tensor);
-        var x2 = x1 + dropout1.forward(mulAtt.forward(x1, x1, x1));
-        return x2 + dropout2.forward(pff.forward(norm2.forward(x2)));
+        var x2 = mulAtt.forward(x1, x1, x1, l);
+        var x3 = tensor + dropout1.forward(x2);
+        var x4 = norm2.forward(x3);
+        var x5 = pff.forward(x4);
+        return x3 + dropout2.forward(x5);
     }
 
-    proc predict(ref tensor: [?D] real) : [D] real {
+    proc predict(ref tensor: [?D] real, in l: int) : [D] real {
         var x1 = norm1.predict(tensor);
-        var x2 = tensor + dropout1.predict(mulAtt.predict(x1, x1, x1));
-        return x2 + dropout2.predict(pff.predict(norm2.predict(x2)));
+        var x2 = mulAtt.predict(x1, x1, x1, l);
+        var x3 = tensor + dropout1.predict(x2);
+        var x4 = norm2.predict(x3);
+        var x5 = pff.predict(x4);
+        return x3 + dropout2.predict(x5);
     }
 
-    proc backward(ref gradient: [?D] real) : [D] real {
-        var g1 = gradient + norm2.backward(pff.backward(dropout2.backward(gradient)));
-        var (g2Q, g2K, g2V) = mulAtt.backward(dropout2.backward(g1));
-        return g1 + norm1.backward(g2Q + g2K + g2V);
+    proc backward(ref gradient: [?D] real, in l: int) : [D] real {
+        var g1 = dropout2.backward(gradient);
+        var g2 = pff.backward(g1);
+        var g3 = gradient + norm2.backward(g2);
+        var g4 = dropout2.backward(g3);
+        var (g5Q, g5K, g5V) = mulAtt.backward(g4, l);
+        var g5all = g5Q + g5K + g5V;
+        return g3 + norm1.backward(g5all);
     }
 
     proc updateParameter() {
@@ -42,10 +52,10 @@ class DecoderLayer {
         pff.updateParameter();
     }
 
-    var norm1: LayerNorm;
-    var mulAtt: MultiheadAttention;
-    var dropout1: DropOut;
-    var norm2: LayerNorm;
-    var pff: PositionwiseFeedForward;
-    var dropout2: DropOut;
+    var norm1: owned LayerNorm;
+    var mulAtt: owned MultiheadAttention;
+    var dropout1: owned DropOut;
+    var norm2: owned LayerNorm;
+    var pff: owned PositionwiseFeedForward;
+    var dropout2: owned DropOut;
 }

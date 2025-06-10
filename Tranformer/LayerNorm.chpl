@@ -1,5 +1,6 @@
 use LinearAlgebra;
 use Util;
+use Config;
 
 class LayerNorm {
 
@@ -10,8 +11,8 @@ class LayerNorm {
         bias = 0.0;
 
         feedCount = 0;
-        gammaOpt = new AdamOptGradient(gamma);
-        biasOpt = new AdamOptGradient(bias);
+        gammaOpt = new AdamOptGradient1(gamma);
+        biasOpt = new AdamOptGradient1(bias);
     }
 
     proc forward(ref tensor: [?D] real) : [D] real {
@@ -24,8 +25,8 @@ class LayerNorm {
             ref rowOut = output[i, ..];
             ref rowXHat = xHat[i, ..];
             ref s = std[i];
-            var g = gamma[i];
-            var b = bias[i];
+            ref g = gamma;
+            ref b = bias;
 
             var mean: real = (+ reduce rowIn) / shape;
             s = sqrt((+ reduce rowIn**2) / shape);
@@ -45,25 +46,25 @@ class LayerNorm {
         for i in D.dim(0) {
             ref rowIn = gradient[i, ..];
             ref rowOut = outGradient[i, ..];
-            ref rowXHAT = xHat[i, ..];
+            ref rowXHat = xHat[i, ..];
             var s = std[i];
-            var g = gamma[i];
-            ref gGrd = gammaOpt.gradient[i];
-            ref bGrd = biasOpt.gradient[i];
+            var g = gamma;
+            ref gGrd = gammaOpt.gradient;
+            ref bGrd = biasOpt.gradient;
 
             var gxH = rowIn * rowXHat;
             var sumG = (+ reduce rowIn);
             var sumGXHat = (+ reduce gxH);
             gGrd = (+ reduce gxH);
             bGrd = (+ reduce rowIn);
-            var a = sumG / shape[1];
-            var b = sumGXHat / shape[1];
+            var a = sumG / shape;
+            var b = sumGXHat / shape;
             rowOut = (rowIn - a - rowXHat * b) * g / s; 
         }
         return outGradient;
     }
 
-    proc updateparameter() {
+    proc updateParameter() {
         gammaOpt.gradient /= feedCount;
         biasOpt.gradient /= feedCount;
 
@@ -81,11 +82,11 @@ class LayerNorm {
     var bias: [domBias] real;
 
     var feedCount: int;
-    var gammaOpt: AdamOptGradient;
-    var biasOpt: AdamOptGradient;
+    var gammaOpt: AdamOptGradient1;
+    var biasOpt: AdamOptGradient1;
 
     var domXHat: domain(2);
-    var domStd: domain(2);
+    var domStd: domain(1);
     var xHat: [domXHat] real;
     var std: [domStd] real;
 }

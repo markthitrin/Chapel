@@ -5,7 +5,20 @@ use Math;
 
 var rng = new randomStream(eltType=real);
 
-record AdamOptGradient {
+record AdamOptGradient1 {
+    proc init(ref parameter: [?D] real) {
+        dom = D;
+        t = 0;
+    }
+    
+    var dom: domain(1);
+    var gradient: [dom] real;
+    var accM: [dom] real;
+    var accV: [dom] real;
+    var t: int;
+};
+
+record AdamOptGradient2 {
     proc init(ref parameter: [?D] real) {
         dom = D;
         t = 0;
@@ -18,11 +31,19 @@ record AdamOptGradient {
     var t: int;
 };
 
-proc AdamOpt(ref parameter: [?D] real, ref optimizer: AdamOptGradient) {
-    var learningRate: real = sqrt(dModel) * min(pow(optimizer.t, -0.5), optimizer.t * pow(warmupStep, -1.5));
+proc AdamOpt(ref parameter: [?D] real, ref optimizer: AdamOptGradient1) {
+    var learningRate: real = sqrt(dModel) * min(optimizer.t ** -0.5, optimizer.t * warmupStep ** -1.5);
     optimizer.accM = optimizer.accM * beta1 + optimizer.gradient * (1.0 - beta1);
     optimizer.accV = optimizer.accV * beta2 + optimizer.gradient ** 2 * (1.0 - beta2);
-    parameter -= learningRate * (optimizer.mHat / beta1) / (sqrt(optimizer.accV / beta2) + eps);
+    parameter -= learningRate * (optimizer.accM / beta1) / (sqrt(optimizer.accV / beta2) + eps);
+    optimizer.t += 1;
+}
+
+proc AdamOpt(ref parameter: [?D] real, ref optimizer: AdamOptGradient2) {
+    var learningRate: real = sqrt(dModel) * min(optimizer.t ** -0.5, optimizer.t * warmupStep ** -1.5);
+    optimizer.accM = optimizer.accM * beta1 + optimizer.gradient * (1.0 - beta1);
+    optimizer.accV = optimizer.accV * beta2 + optimizer.gradient ** 2 * (1.0 - beta2);
+    parameter -= learningRate * (optimizer.accM / beta1) / (sqrt(optimizer.accV / beta2) + eps);
     optimizer.t += 1;
 }
 
@@ -30,10 +51,10 @@ proc CrossEntropy(ref output: [?D1] real, const ref target: [?D2] real, ref outG
     outGradient = 0.0;
     var loss = 0.0;
     var d = D1.dim(0).size;
-    for i in 1..d {
-        var rowOut = output[i, ..];
-        var rowGrd = outGradient[i, ..];
-        var targetToken = target[i];
+    for i in 0..#d {
+        ref rowOut = output[i, ..];
+        ref rowGrd = outGradient[i, ..];
+        var targetToken = target[i]:int;
         if(rowOut[targetToken] < 1e-8) {
             rowGrd[targetToken] = -1.0 / 1e-8 / d;
         }
@@ -41,7 +62,7 @@ proc CrossEntropy(ref output: [?D1] real, const ref target: [?D2] real, ref outG
             rowGrd[targetToken] = -1.0 / rowOut[targetToken] / d;
         }
 
-        loss += log(rowOut);
+        loss += log(rowOut[targetToken]);
     }
     loss *= -1.0 / d;
     return loss;
@@ -58,8 +79,8 @@ proc UniformInit(ref parameter: [?D] real, in limit: real) {
 }
 
 proc sampleNormal (in mu: real, in sigma: real) : real {
-  const u1 = rng.getNext();
-  const u2 = rng.getNext();
+  const u1 = rng.next();
+  const u2 = rng.next();
   const z0 = sqrt(-2 * log(u1)) * cos(2 * pi * u2);
   return mu + sigma * z0;
 }

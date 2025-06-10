@@ -15,6 +15,6 @@ class ReLU {
         return gradient * mask;
     }
 
-    var domMask = domain(2);
+    var domMask: domain(2);
     var mask: [domMask] real;
 }
