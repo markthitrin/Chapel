@@ -3,17 +3,20 @@ use Random;
 use Config;
 use Math;
 use CTypes;
+use ReplicatedDist;
 
 var rng = new randomStream(eltType=real);
 
 record AdamOptGradient1 {
     proc init(ref parameter: [?D] real) {
+        domDist = D;
         dom = D;
         t = 0;
     }
     
+    var domDist: domain(1) dmapped new replicatedDist();
     var dom: domain(1);
-    var gradient: [dom] real;
+    var gradient: [domDist] real;
     var accM: [dom] real;
     var accV: [dom] real;
     var t: int;
@@ -21,10 +24,12 @@ record AdamOptGradient1 {
 
 record AdamOptGradient2 {
     proc init(ref parameter: [?D] real) {
+        domDist = D;
         dom = D;
         t = 0;
     }
     
+    var domDist: domain(2) dmapped new replicatedDist();
     var dom: domain(2);
     var gradient: [dom] real;
     var accM: [dom] real;
@@ -33,17 +38,31 @@ record AdamOptGradient2 {
 };
 
 proc AdamOpt(ref parameter: [?D] real, ref optimizer: AdamOptGradient1) {
+    var totalGradient = Matrix(D);
+    coforall i in 0..#numLocales with (+ reduce totalGradient) {
+        on Locales[i] {
+            totalGradient += optimizer.gradient;
+            optimizer.gradient = 0;
+        }
+    }
     var learningRate: real = sqrt(dModel) * min(optimizer.t ** -0.5, optimizer.t * warmupStep ** -1.5);
-    optimizer.accM = optimizer.accM * beta1 + optimizer.gradient * (1.0 - beta1);
-    optimizer.accV = optimizer.accV * beta2 + optimizer.gradient ** 2 * (1.0 - beta2);
+    optimizer.accM = optimizer.accM * beta1 + totalGradient * (1.0 - beta1);
+    optimizer.accV = optimizer.accV * beta2 + totalGradient ** 2 * (1.0 - beta2);
     parameter -= learningRate * (optimizer.accM / beta1) / (sqrt(optimizer.accV / beta2) + eps);
     optimizer.t += 1;
 }
 
 proc AdamOpt(ref parameter: [?D] real, ref optimizer: AdamOptGradient2) {
+    var totalGradient = Matrix(D);
+    coforall i in 0..#numLocales with (+ reduce totalGradient) {
+        on Locales[i] {
+            totalGradient += optimizer.gradient;
+            optimizer.gradient = 0;
+        }
+    }
     var learningRate: real = sqrt(dModel) * min(optimizer.t ** -0.5, optimizer.t * warmupStep ** -1.5);
-    optimizer.accM = optimizer.accM * beta1 + optimizer.gradient * (1.0 - beta1);
-    optimizer.accV = optimizer.accV * beta2 + optimizer.gradient ** 2 * (1.0 - beta2);
+    optimizer.accM = optimizer.accM * beta1 + totalGradient * (1.0 - beta1);
+    optimizer.accV = optimizer.accV * beta2 + totalGradient ** 2 * (1.0 - beta2);
     parameter -= learningRate * (optimizer.accM / beta1) / (sqrt(optimizer.accV / beta2) + eps);
     optimizer.t += 1;
 }

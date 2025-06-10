@@ -1,6 +1,7 @@
 use LinearAlgebra;
 use Util;
 use Math;
+use ReplicatedDist;
 
 class LogSoftmax {
     proc forward(ref tensor: [?D] real) : [D] real {
@@ -12,7 +13,7 @@ class LogSoftmax {
 
             var maxValue = (max reduce rowIn);
             var sumExp = (+ reduce exp(rowIn - maxValue));
-            var logSumExp = maxValue + log(sumExp);
+            var logSumExp = maxValue + fast_log2(sumExp);
             rowOut = rowIn - logSumExp;
         }
         return output;
@@ -36,6 +37,6 @@ class LogSoftmax {
         return outGradient;
     }    
 
-    var domOutput: domain(2);
+    var domOutput: domain(2) dmapped new replicatedDist();
     var output: [domOutput] real;
 }

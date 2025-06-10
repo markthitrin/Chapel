@@ -1,6 +1,7 @@
 use LinearAlgebra;
 use Util;
 use Config;
+use ReplicatedDist;
 
 class Linear {
     proc init(in inD: int, in outD: int) {
@@ -47,8 +48,6 @@ class Linear {
         AdamOpt(weight, weightOpt);
         AdamOpt(bias, biasOpt);
 
-        weightOpt.gradient = 0;
-        biasOpt.gradient = 0;
         feedCount = 0;
     }
 
@@ -61,6 +60,6 @@ class Linear {
     var weightOpt: AdamOptGradient2;
     var biasOpt: AdamOptGradient1;
 
-    var domInput: domain(2);
+    var domInput: domain(2) dmapped new replicatedDist();
     var input: [domInput] real;
 }

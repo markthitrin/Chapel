@@ -2,6 +2,7 @@ use LinearAlgebra;
 use Util;
 use Math;
 use Config;
+use ReplicatedDist;
 
 class Embedding {
     proc init(in numTokens: int) {
@@ -41,8 +42,6 @@ class Embedding {
             tableOpt[i].gradient /= feedCount;
 
             AdamOpt(table[i, ..], tableOpt[i]);
-
-            tableOpt[i].gradient = 0.0;
         }
         feedCount = 0;
     }
@@ -54,6 +53,6 @@ class Embedding {
     var domTableOpt: domain(1);
     var tableOpt: [domTableOpt] AdamOptGradient1;
     
-    var domToken: domain(1);
+    var domToken: domain(1) dmapped new replicatedDist();
     var token: [domToken] real;
 }

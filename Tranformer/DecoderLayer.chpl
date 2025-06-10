@@ -6,6 +6,7 @@ use LayerNorm;
 use MultiheadAttention;
 use DropOut;
 use PositionwiseFeedForward;
+use ReplicatedDist;
 
 class DecoderLayer {
     proc init() {

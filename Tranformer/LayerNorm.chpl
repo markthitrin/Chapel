@@ -1,6 +1,7 @@
 use LinearAlgebra;
 use Util;
 use Config;
+use ReplicatedDist;
 
 class LayerNorm {
 
@@ -20,8 +21,6 @@ class LayerNorm {
         var output = Matrix(D);
         domXHat = D;
         domStd = {D.dim(0)};
-        xHat = Matrix(domXHat);
-        std = Vector(domStd);
         forall i in D.dim(0) {
             ref rowIn = tensor[i, ..];
             ref rowOut = output[i, ..];
@@ -71,8 +70,6 @@ class LayerNorm {
         AdamOpt(gamma, gammaOpt);
         AdamOpt(bias, biasOpt);
 
-        gammaOpt.gradient = 0;
-        biasOpt.gradient = 0;
         feedCount = 0;
     }
     
@@ -85,8 +82,8 @@ class LayerNorm {
     var gammaOpt: AdamOptGradient1;
     var biasOpt: AdamOptGradient1;
 
-    var domXHat: domain(2);
-    var domStd: domain(1);
+    var domXHat: domain(2) dmapped new replicatedDist();
+    var domStd: domain(1) dmapped new replicatedDist();
     var xHat: [domXHat] real;
     var std: [domStd] real;
 }

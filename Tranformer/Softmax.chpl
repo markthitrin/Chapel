@@ -1,6 +1,7 @@
 use LinearAlgebra;
 use Util;
 use Math;
+use ReplicatedDist;
 
 class Softmax {
     proc forward(ref tensor: [?D] real) : [D] real {
@@ -34,6 +35,6 @@ class Softmax {
         return outGradient;
     }    
 
-    var domOutput: domain(2);
+    var domOutput: domain(2) dmapped new replicatedDist();
     var output: [domOutput] real;
 }

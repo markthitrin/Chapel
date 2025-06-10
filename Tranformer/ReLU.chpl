@@ -1,4 +1,5 @@
 use LinearAlgebra;
+use ReplicatedDist;
 
 class ReLU {
     proc forward(ref tensor: [?D] real) : [D] real {
@@ -15,6 +16,6 @@ class ReLU {
         return gradient * mask;
     }
 
-    var domMask: domain(2);
+    var domMask: domain(2) dmapped new replicatedDist();
     var mask: [domMask] real;
 }

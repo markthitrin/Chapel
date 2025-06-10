@@ -36,8 +36,10 @@ class PositionwiseFeedForward {
     }
 
     proc updateParameter() {
-        linear1.updateParameter();
-        linear2.updateParameter();
+        cobegin {
+            linear1.updateParameter();
+            linear2.updateParameter();
+        }
     }
 
     var linear1: owned Linear;

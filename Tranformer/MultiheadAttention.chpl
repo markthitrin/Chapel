@@ -3,6 +3,16 @@ use Util;
 use Math;
 use Config;
 use Softmax;
+use ReplicatedDist;
+
+proc transposeX(ref A: [?D] real) {
+    var DT = {D.dim(1), D.dim(0)};
+    var AT = Matrix(DT);
+    for (i,j) in A.domain {
+        AT[j,i] = A[i,j];
+    }
+    return AT;
+}
 
 class MultiheadAttention {
     proc init() {
@@ -49,12 +59,12 @@ class MultiheadAttention {
         var output = Matrix(batch * l, dModel);
 
         forall i in 0..#batch {
-            QT[(i * qshape)..#qshape, ..] = dot(WQ, inputQ[(i * l)..#l, ..].T);
-            KT[(i * qshape)..#qshape, ..] = dot(WK, inputK[(i * l)..#l, ..].T);
-            VT[(i * dModel)..#dModel, ..] = dot(WV, inputV[(i * l)..#l, ..].T);
+            QT[(i * qshape)..#qshape, ..] = dot(WQ, transposeX(inputQ[(i * l)..#l, ..]));
+            KT[(i * qshape)..#qshape, ..] = dot(WK, transposeX(inputK[(i * l)..#l, ..]));
+            VT[(i * dModel)..#dModel, ..] = dot(WV, transposeX(inputV[(i * l)..#l, ..]));
         }
         forall ij in 0..#(batch * head) {
-            A[(ij * l)..#l, ..] = dot(QT[(ij * qPerHead)..#qPerHead, ..].T, KT[(ij * qPerHead)..#qPerHead, ..]);
+            A[(ij * l)..#l, ..] = dot(transposeX(QT[(ij * qPerHead)..#qPerHead, ..]), KT[(ij * qPerHead)..#qPerHead, ..]);
         }
         A = A / sqrt(qPerHead);
         forall ij in 0..#(batch * head) {
@@ -66,10 +76,10 @@ class MultiheadAttention {
         }
         As = softmax.forward(A);
         forall ij in 0..#(batch * head) {
-            OT[(ij * outPerHead)..#outPerHead, ..] = dot(VT[(ij * outPerHead)..#outPerHead, ..], As[(ij * l)..#l, ..].T);
+            OT[(ij * outPerHead)..#outPerHead, ..] = dot(VT[(ij * outPerHead)..#outPerHead, ..], transposeX(As[(ij * l)..#l, ..]));
         }
         forall i in 0..#batch {
-            output[(i * l)..#l, ..] = dot(OT[(i * dModel)..#dModel, ..].T, WO);
+            output[(i * l)..#l, ..] = dot(transposeX(OT[(i * dModel)..#dModel, ..]), WO);
         }
         return output;
     }
@@ -97,10 +107,10 @@ class MultiheadAttention {
         feedCount += 1;
         forall i in 0..#batch {
             WOOpt.gradient += dot(OT[(i * dModel)..#dModel, ..], gradient[(i * l)..#l, ..]);
-            OTGradient[(i * dModel)..#dModel, ..] = dot(WO, gradient[(i * l)..#l, ..].T);
+            OTGradient[(i * dModel)..#dModel, ..] = dot(WO, transposeX(gradient[(i * l)..#l, ..]));
         }
         forall ij in 0..#(batch * head) {
-            AsGradient[(ij * l)..#l, ..] = dot(OTGradient[(ij * outPerHead)..#outPerHead, ..].T, VT[(ij * outPerHead)..#outPerHead, ..]);
+            AsGradient[(ij * l)..#l, ..] = dot(transposeX(OTGradient[(ij * outPerHead)..#outPerHead, ..]), VT[(ij * outPerHead)..#outPerHead, ..]);
             VTGradient[(ij * outPerHead)..#outPerHead, ..] = dot(OT[(ij * outPerHead)..#outPerHead, ..], As[(ij * l)..#l, ..]);
         }
         AGradient = softmax.backward(AsGradient) / sqrt(qPerHead);
@@ -109,15 +119,15 @@ class MultiheadAttention {
         } 
         forall ij in 0..#(batch * head) {
             KTGradient[(ij * qPerHead)..#qPerHead, ..] = dot(QT[(ij * qPerHead)..#qPerHead, ..], AGradient[(ij * l)..#l, ..]);
-            QTGradient[(ij * qPerHead)..#qPerHead, ..] = dot(KT[(ij * qPerHead)..#qPerHead, ..], AGradient[(ij * l)..#l, ..].T);
+            QTGradient[(ij * qPerHead)..#qPerHead, ..] = dot(KT[(ij * qPerHead)..#qPerHead, ..], transposeX(AGradient[(ij * l)..#l, ..]));
         }
         forall i in 0..#batch {
             WQOpt.gradient += dot(QTGradient[(i * qshape)..#qshape, ..], inputQ[(i * l)..#l, ..]);
             WKOpt.gradient += dot(KTGradient[(i * qshape)..#qshape, ..], inputK[(i * l)..#l, ..]);
             WVOpt.gradient += dot(VTGradient[(i * dModel)..#dModel, ..], inputV[(i * l)..#l, ..]);
-            outGradientQ[(i * l)..#l, ..] = dot(QTGradient[(i * qshape)..#qshape, ..].T, WQ);
-            outGradientK[(i * l)..#l, ..] = dot(KTGradient[(i * qshape)..#qshape, ..].T, WK);
-            outGradientV[(i * l)..#l, ..] = dot(VTGradient[(i * dModel)..#dModel, ..].T, WV);
+            outGradientQ[(i * l)..#l, ..] = dot(transposeX(QTGradient[(i * qshape)..#qshape, ..]), WQ);
+            outGradientK[(i * l)..#l, ..] = dot(transposeX(KTGradient[(i * qshape)..#qshape, ..]), WK);
+            outGradientV[(i * l)..#l, ..] = dot(transposeX(VTGradient[(i * dModel)..#dModel, ..]), WV);
         }
         return (outGradientQ, outGradientK, outGradientV);
     }
@@ -133,10 +143,6 @@ class MultiheadAttention {
         AdamOpt(WV, WVOpt);
         AdamOpt(WO, WOOpt);
 
-        WQOpt.gradient = 0;
-        WKOpt.gradient = 0;
-        WVOpt.gradient = 0;
-        WOOpt.gradient = 0;
         feedCount = 0;
     }
 
@@ -157,15 +163,15 @@ class MultiheadAttention {
 
     var softmax: owned Softmax;
 
-    var domQT: domain(2);
-    var domKT: domain(2);
-    var domVT: domain(2);
-    var domA: domain(2);
-    var domAs: domain(2);
-    var domOT: domain(2);
-    var domInputQ: domain(2);
-    var domInputK: domain(2);
-    var domInputV: domain(2);
+    var domQT: domain(2) dmapped new replicatedDist();
+    var domKT: domain(2) dmapped new replicatedDist();
+    var domVT: domain(2) dmapped new replicatedDist();
+    var domA: domain(2) dmapped new replicatedDist();
+    var domAs: domain(2) dmapped new replicatedDist();
+    var domOT: domain(2) dmapped new replicatedDist();
+    var domInputQ: domain(2) dmapped new replicatedDist();
+    var domInputK: domain(2) dmapped new replicatedDist();
+    var domInputV: domain(2) dmapped new replicatedDist();
     var QT: [domQT] real;
     var KT: [domKT] real;
     var VT: [domVT] real;

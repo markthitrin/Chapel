@@ -2,6 +2,7 @@ use LinearAlgebra;
 use Util;
 use Math;
 use Random;
+use ReplicatedDist;
 
 var rng = new randomStream(real, seed=0);
 
@@ -33,6 +34,6 @@ class DropOut {
 
     var dropoutRate: real;
 
-    var domMask: domain(2);
+    var domMask: domain(2) dmapped new replicatedDist();
     var mask: [domMask] real;
 }

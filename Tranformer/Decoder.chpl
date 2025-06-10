@@ -8,10 +8,22 @@ use PositionalEncoder;
 use LayerNorm;
 use Linear;
 use Softmax;
+use ReplicatedDist;
 
+iter localeIter(in N: int) {
+    var each: int = N / numLocales;
+    var s = 0;
+    var e = each;
+    while(s < N) {
+        yield s..<min(N,e);
+        s = e;
+        e += each;
+    }
+}
 
 class Decoder {
     proc init(in numTokens: int, in N: int) {
+        this.numTokens = numTokens;
         embedding = new Embedding(numTokens);
         positionalEncoder = new PositionalEncoder();
         domDecoderLayer = {0..#N};
@@ -21,36 +33,46 @@ class Decoder {
         softmax = new Softmax();
     }
 
-    proc forward(ref tensor: [?D] real, in l: int) {
-        var x1 = embedding.forward(tensor);
-        var xi = positionalEncoder.forward(x1, l);
-        for i in domDecoderLayer {
-            xi = decoderLayers[i].forward(xi, l);
+    proc forward(ref tensor: [?D] real, in l: int) : [{0..#D.dim(0).size, 0..#numTokens}] real {
+        var output = Matrix(D.dim(0).size, numTokens);
+        coforall (rge,loc) in zip(localeIter(D.dim(0).size), 0..) do on Locales[loc] {
+            var x1 = embedding.forward(tensor[rge]);
+            var xi = positionalEncoder.forward(x1, l);
+            for i in domDecoderLayer {
+                xi = decoderLayers[i].forward(xi, l);
+            }
+            var x2 = norm.forward(xi);
+            var x3 = linear.forward(x2);
+            output[rge, ..] = softmax.forward(x3);
         }
-        var x2 = norm.forward(xi);
-        var x3 = linear.forward(x2);
-        return softmax.forward(x3);
+        return output;
     }
 
-    proc predict(ref tensor: [?D] real, in l: int) {
-        var x1 = embedding.predict(tensor);
-        var xi = positionalEncoder.predict(x1, l);
-        for i in domDecoderLayer {
-            xi = decoderLayers[i].predict(xi, l);
+    proc predict(ref tensor: [?D] real, in l: int) : [{0..#D.dim(0).size, 0..#numTokens}] real {
+        var output = Matrix(D.dim(0).size, numTokens);
+        coforall (rge,loc) in zip(localeIter(D.dim(0).size), 0..) do on Locales[loc] {
+            var x1 = embedding.predict(tensor[rge]);
+            var xi = positionalEncoder.predict(x1, l);
+            for i in domDecoderLayer {
+                xi = decoderLayers[i].predict(xi, l);
+            }
+            var x2 = norm.predict(xi);
+            var x3 = linear.predict(x2);
+            output[rge, ..] = softmax.predict(x3);
         }
-        var x2 = norm.predict(xi);
-        var x3 = linear.predict(x2);
-        return softmax.predict(x3);
+        return output;
     }
 
     proc backward(ref gradient: [?D] real, in l: int) {
-        var g1 = softmax.backward(gradient);
-        var g2 = linear.backward(g1);
-        var gi = norm.backward(g2);
-        for i in domDecoderLayer by -1 {
-            gi = decoderLayers[i].backward(gi, l);
+        coforall (rge,loc) in zip(localeIter(D.dim(0).size), 0..) do on Locales[loc] {
+            var g1 = softmax.backward(gradient[rge, ..]);
+            var g2 = linear.backward(g1);
+            var gi = norm.backward(g2);
+            for i in domDecoderLayer by -1 {
+                gi = decoderLayers[i].backward(gi, l);
+            }
+            embedding.backward(gi);
         }
-        embedding.backward(gi);
     }
 
     proc updateParameter() {
@@ -64,6 +86,7 @@ class Decoder {
         }
     }
     
+    var numTokens: int;
     var embedding: owned Embedding;
     var positionalEncoder: owned PositionalEncoder;
     var domDecoderLayer: domain(1);
