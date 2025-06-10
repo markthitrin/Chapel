@@ -46,10 +46,12 @@ class DecoderLayer {
     }
 
     proc updateParameter() {
-        norm1.updateParameter();
-        mulAtt.updateParameter();
-        norm2.updateParameter();
-        pff.updateParameter();
+        cobegin {
+            norm1.updateParameter();
+            mulAtt.updateParameter();
+            norm2.updateParameter();
+            pff.updateParameter();
+        }
     }
 
     var norm1: owned LayerNorm;

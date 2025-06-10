@@ -6,7 +6,7 @@ class Softmax {
     proc forward(ref tensor: [?D] real) : [D] real {
         domOutput = D;
         output = Matrix(D);
-        for i in D.dim(0) {
+        forall i in D.dim(0) {
             ref rowIn = tensor[i, ..];
             ref rowOutput = output[i, ..];
 
@@ -23,7 +23,7 @@ class Softmax {
 
     proc backward(ref gradient: [?D] real) : [D] real {
         var outGradient = Matrix(D);
-        for i in D.dim(0) {
+        forall i in D.dim(0) {
             ref rowIn = gradient[i, ..];
             ref rowOut = outGradient[i, ..];
             ref rowOutput = output[i, ..];

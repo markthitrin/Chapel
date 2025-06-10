@@ -2,6 +2,7 @@ use LinearAlgebra;
 use Random;
 use Config;
 use Math;
+use CTypes;
 
 var rng = new randomStream(eltType=real);
 
@@ -62,7 +63,7 @@ proc CrossEntropy(ref output: [?D1] real, const ref target: [?D2] real, ref outG
             rowGrd[targetToken] = -1.0 / rowOut[targetToken] / d;
         }
 
-        loss += log(rowOut[targetToken]);
+        loss += fast_log2(rowOut[targetToken]);
     }
     loss /= -d;
     return loss;
@@ -91,4 +92,23 @@ proc HeNormalInit(ref parameter: [?D] real) {
     for p in parameter {
         p = sampleNormal(0.0, stddev);
     }
+}
+
+proc bitcast(x : real(64)) : int(64) {
+    var u = x;
+    var r: int(64);
+    var p = c_ptrTo(u);
+    r = (p:c_ptr(int(64))).deref();
+    return r;
+}
+
+proc fast_log2(x: real): real {
+  if x <= 0.0 then
+    halt("Input must be positive");
+
+  var bits = bitcast(x);  
+  var exponent = ((bits >> 52) & 0x7FF):int - 1023; 
+  var mantissa = (bits & 0xFFFFFFFFFFFFF) | (1 << 52); 
+  var m = mantissa:real / (1 << 52);
+  return exponent:real + (m - 1.0);
 }

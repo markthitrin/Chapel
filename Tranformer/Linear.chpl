@@ -20,7 +20,7 @@ class Linear {
         domInput = D;
         input = tensor;
         var result = dot(tensor, weight);
-        for i in D.dim(0) {
+        forall i in D.dim(0) {
             result[i, ..] += bias;
         }
         return result;

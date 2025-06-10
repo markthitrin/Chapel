@@ -15,7 +15,7 @@ class Decoder {
         embedding = new Embedding(numTokens);
         positionalEncoder = new PositionalEncoder();
         domDecoderLayer = {0..#N};
-        decoderLayers = for i in domDecoderLayer do new DecoderLayer();
+        decoderLayers = forall i in domDecoderLayer do new DecoderLayer();
         norm = new LayerNorm(dModel);
         linear = new Linear(dModel, numTokens);
         softmax = new Softmax();
@@ -54,12 +54,14 @@ class Decoder {
     }
 
     proc updateParameter() {
-        embedding.updateParameter();
-        for i in domDecoderLayer {
-            decoderLayers[i].updateParameter();
+        cobegin {
+            embedding.updateParameter();
+            forall i in domDecoderLayer {
+                decoderLayers[i].updateParameter();
+            }
+            norm.updateParameter();
+            linear.updateParameter();
         }
-        norm.updateParameter();
-        linear.updateParameter();
     }
     
     var embedding: owned Embedding;

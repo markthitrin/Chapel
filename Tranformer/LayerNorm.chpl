@@ -20,7 +20,9 @@ class LayerNorm {
         var output = Matrix(D);
         domXHat = D;
         domStd = {D.dim(0)};
-        for i in D.dim(0) {
+        xHat = Matrix(domXHat);
+        std = Vector(domStd);
+        forall i in D.dim(0) {
             ref rowIn = tensor[i, ..];
             ref rowOut = output[i, ..];
             ref rowXHat = xHat[i, ..];

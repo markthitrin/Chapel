@@ -3,6 +3,7 @@ use Data;
 use Decoder;
 use Config;
 use Util;
+use Time;
 
 param trainingSize = 700000;
 param trainingIteration = 2000;
@@ -10,6 +11,7 @@ param testIteration = 10;
 
 proc main() {
     try {
+        var t: stopwatch;
         var dataFile = open("DatasetToken.txt", ioMode.r);
         var translateFile = open("DatasetTranslate.txt", ioMode.r);
         var dataReader = dataFile.reader(locking=false);
@@ -27,8 +29,10 @@ proc main() {
         }
 
         var model = new Decoder(translateMaxSize, 6);
+        var avgTime = 0.0;
 
         for i in 1..trainingIteration {
+            t.start();
             var (input, target) = getData(data[0..#trainingSize], batch, sequenceLength);
             var output = model.forward(input, sequenceLength);
             var outGradient = output;
@@ -45,9 +49,13 @@ proc main() {
             //     writeln(maxVal, " aaaaaa ::: ", maxLoc);
             // }
             var loss = CrossEntropy(output, target, outGradient);
-            writeln("Iteration : ", i , " / ",trainingIteration,"loss : ",loss);
+            write("Iteration : ", i , " / ",trainingIteration,"loss : ",loss);
             model.backward(outGradient, sequenceLength);
             model.updateParameter();
+            t.stop();
+            avgTime += t.elapsed();
+            writeln(" Speed :", 1.0 / (avgTime / i), " iteration Per second");
+            t.clear();
         }
         for i in 1..testIteration {
             var (input, target) = getData(data[trainingSize..], batch, sequenceLength);
