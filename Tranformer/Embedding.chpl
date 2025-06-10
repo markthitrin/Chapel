@@ -7,6 +7,7 @@ class Embedding {
     proc init(in numTokens: int) {
         domTable = {0..#numTokens, 0..#dModel};
         table = Matrix(domTable);
+        UniformInit(table, 0.1);
 
         feedCount = 0;
         domTableOpt = {0..#numTokens};
@@ -14,7 +15,7 @@ class Embedding {
     }
 
     proc forward(ref tensor: [?D] real) : [{D.dim(0), 0..#dModel}] real {
-        domToken = D.dim(0);
+        domToken = D;
         token = tensor;
         var output = Matrix(D.dim(0).size, dModel);
         for i in D.dim(0) {
@@ -23,7 +24,7 @@ class Embedding {
         return output;
     }
 
-    proc predict(ref tensor: [?D] real) : [D] real {
+    proc predict(ref tensor: [?D] real) : [{D.dim(0), 0..#dModel}] real {
         return forward(tensor);
     }
 

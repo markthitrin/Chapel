@@ -26,7 +26,7 @@ class Linear {
         return result;
     }
 
-    proc predict(ref tensor: [?D] real) : [D] real {
+    proc predict(ref tensor: [?D] real) : [{D.dim(0),domWeight.dim(1)}] real {
         return forward(tensor);
     }
 

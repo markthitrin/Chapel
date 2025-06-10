@@ -6,8 +6,8 @@ use Random;
 var rng = new randomStream(real, seed=0);
 
 proc GenerateDropoutMask(ref mask: [?D] real, in dropoutRate : real) {
-    for m in mask {
-        m = if rng.next() > dropoutRate then 1.0 else 0.0;
+    for idx in mask.domain {
+        mask[idx] = if rng.next() > dropoutRate then 1.0 else 0.0;
     }
 }
 

@@ -25,13 +25,11 @@ class LayerNorm {
             ref rowOut = output[i, ..];
             ref rowXHat = xHat[i, ..];
             ref s = std[i];
-            ref g = gamma;
-            ref b = bias;
 
             var mean: real = (+ reduce rowIn) / shape;
-            s = sqrt((+ reduce rowIn**2) / shape);
+            s = sqrt((+ reduce (rowIn - mean)**2) / shape);
             rowXHat = (rowIn - mean) / (s + eps);
-            rowOut = g * rowXHat + b;
+            rowOut = gamma * rowXHat + bias;
         }
         return output;
     }
@@ -41,6 +39,7 @@ class LayerNorm {
     }
 
     proc backward(ref gradient: [?D] real) : [D] real {
+        feedCount += 1;
         var shape = D.dim(1).size;
         var outGradient = Matrix(D);
         for i in D.dim(0) {
@@ -48,18 +47,17 @@ class LayerNorm {
             ref rowOut = outGradient[i, ..];
             ref rowXHat = xHat[i, ..];
             var s = std[i];
-            var g = gamma;
             ref gGrd = gammaOpt.gradient;
             ref bGrd = biasOpt.gradient;
 
             var gxH = rowIn * rowXHat;
             var sumG = (+ reduce rowIn);
             var sumGXHat = (+ reduce gxH);
-            gGrd = (+ reduce gxH);
-            bGrd = (+ reduce rowIn);
+            gGrd += gxH;
+            bGrd += rowIn;
             var a = sumG / shape;
             var b = sumGXHat / shape;
-            rowOut = (rowIn - a - rowXHat * b) * g / s; 
+            rowOut = (rowIn - a - rowXHat * b) * gamma / (s + eps); 
         }
         return outGradient;
     }

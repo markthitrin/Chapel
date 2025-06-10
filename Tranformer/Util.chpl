@@ -64,13 +64,13 @@ proc CrossEntropy(ref output: [?D1] real, const ref target: [?D2] real, ref outG
 
         loss += log(rowOut[targetToken]);
     }
-    loss *= -1.0 / d;
+    loss /= -d;
     return loss;
 }
 
 proc XavierUniformInit(ref parameter: [?D] real) {
-    var (inD, outD) = D;
-    var limit = sqrt(6.0 / (inD + outD));
+    var size = D.size;
+    var limit = sqrt(6.0 / size);
     fillRandom(parameter, -limit, limit);
 }
 

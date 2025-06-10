@@ -14,10 +14,10 @@ class MultiheadAttention {
         WK = Matrix(domWK);
         WV = Matrix(domWV);
         WO = Matrix(domWO);
-        HeNormalInit(WQ);
-        HeNormalInit(WK);
-        HeNormalInit(WV);
-        HeNormalInit(WO);
+        XavierUniformInit(WQ);
+        XavierUniformInit(WK);
+        XavierUniformInit(WV);
+        XavierUniformInit(WO);
 
         feedCount = 0;
         WQOpt = new AdamOptGradient2(WQ);
@@ -49,23 +49,24 @@ class MultiheadAttention {
         var output = Matrix(batch * l, dModel);
 
         for i in 0..#batch {
-            QT[(i * qshape)..#qshape, ..] = dot(WQ, tensorQ[(i * l)..#l, ..].T);
-            KT[(i * qshape)..#qshape, ..] = dot(WK, tensorQ[(i * l)..#l, ..].T);
-            VT[(i * dModel)..#dModel, ..] = dot(WV, tensorQ[(i * l)..#l, ..].T);
+            QT[(i * qshape)..#qshape, ..] = dot(WQ, inputQ[(i * l)..#l, ..].T);
+            KT[(i * qshape)..#qshape, ..] = dot(WK, inputK[(i * l)..#l, ..].T);
+            VT[(i * dModel)..#dModel, ..] = dot(WV, inputV[(i * l)..#l, ..].T);
         }
-        for i in 0..#batch {
-            for j in 0..#head {
-                var ij = (i * head + j);
-                A[(ij * l)..#l, ..] = dot(QT[(ij * qPerHead)..#qPerHead, ..].T, KT[(ij * qPerHead)..#qPerHead, ..]);
+        for ij in 0..#(batch * head) {
+            A[(ij * l)..#l, ..] = dot(QT[(ij * qPerHead)..#qPerHead, ..].T, KT[(ij * qPerHead)..#qPerHead, ..]);
+        }
+        A = A / sqrt(qPerHead);
+        for ij in 0..#(batch * head) {
+            for k in 1..<l {
+                for w in 0..<k {
+                    A[(ij * l) + k, w] = -1e9;
+                }
             }
         }
-        A = triu(A) / sqrt(qPerHead);
         As = softmax.forward(A);
-        for i in 0..#batch {
-            for j in 0..#head {
-                var ij = (i * head + j);
-                OT[(ij * outPerHead)..#outPerHead, ..] = dot(VT[(ij * outPerHead)..#outPerHead, ..], As[(ij * l)..#l, ..].T);
-            }
+        for ij in 0..#(batch * head) {
+            OT[(ij * outPerHead)..#outPerHead, ..] = dot(VT[(ij * outPerHead)..#outPerHead, ..], As[(ij * l)..#l, ..].T);
         }
         for i in 0..#batch {
             output[(i * l)..#l, ..] = dot(OT[(i * dModel)..#dModel, ..].T, WO);
@@ -92,27 +93,23 @@ class MultiheadAttention {
         var AGradient = Matrix(domA);
         var AsGradient = Matrix(domAs);
         var OTGradient = Matrix(domOT);
-        var outGradient = Matrix(D);
 
-        feedCount = 0;
+        feedCount += 1;
         for i in 0..#batch {
             WOOpt.gradient += dot(OT[(i * dModel)..#dModel, ..], gradient[(i * l)..#l, ..]);
             OTGradient[(i * dModel)..#dModel, ..] = dot(WO, gradient[(i * l)..#l, ..].T);
         }
-        for i in 0..#batch {
-            for j in 0..#head {
-                var ij = (i * head + j);
-                AsGradient[(ij * l)..#l, ..] = dot(OTGradient[(ij * outPerHead)..#outPerHead, ..].T, VT[(ij * outPerHead)..#outPerHead, ..]);
-                VTGradient[(ij * outPerHead)..#outPerHead, ..] = dot(OT[(ij * outPerHead)..#outPerHead, ..], As[(ij * l)..#l, ..]);
-            }
+        for ij in 0..#(batch * head) {
+            AsGradient[(ij * l)..#l, ..] = dot(OTGradient[(ij * outPerHead)..#outPerHead, ..].T, VT[(ij * outPerHead)..#outPerHead, ..]);
+            VTGradient[(ij * outPerHead)..#outPerHead, ..] = dot(OT[(ij * outPerHead)..#outPerHead, ..], As[(ij * l)..#l, ..]);
         }
-        AGradient = triu(softmax.backward(AsGradient)) / sqrt(qPerHead);
-        for i in 0..#batch {
-            for j in 0..#head {
-                var ij = (i * head + j);
-                KTGradient[(ij * qPerHead)..#qPerHead, ..] = dot(QT[(ij * qPerHead)..#qPerHead, ..], AGradient[(ij * l)..#l, ..]);
-                QTGradient[(ij * qPerHead)..#qPerHead, ..] = dot(KT[(ij * qPerHead)..#qPerHead, ..], AGradient[(ij * l)..#l, ..].T);
-            }
+        AGradient = softmax.backward(AsGradient) / sqrt(qPerHead);
+        for ij in 0..#(batch * head) {
+            AGradient[(ij * l)..#l, ..] = triu(AGradient[(ij * l)..#l, ..]);
+        } 
+        for ij in 0..#(batch * head) {
+            KTGradient[(ij * qPerHead)..#qPerHead, ..] = dot(QT[(ij * qPerHead)..#qPerHead, ..], AGradient[(ij * l)..#l, ..]);
+            QTGradient[(ij * qPerHead)..#qPerHead, ..] = dot(KT[(ij * qPerHead)..#qPerHead, ..], AGradient[(ij * l)..#l, ..].T);
         }
         for i in 0..#batch {
             WQOpt.gradient += dot(QTGradient[(i * qshape)..#qshape, ..], inputQ[(i * l)..#l, ..]);

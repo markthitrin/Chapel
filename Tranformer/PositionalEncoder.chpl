@@ -19,7 +19,7 @@ class PositionalEncoder {
         return output;
     }
 
-    proc predict(ref tensor: [?D] real) : [D] real {
-        return forward(tensor);   
+    proc predict(ref tensor: [?D] real, in l: int) : [D] real {
+        return forward(tensor, l);   
     }
 }

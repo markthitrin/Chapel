@@ -39,7 +39,7 @@ class DecoderLayer {
         var g1 = dropout2.backward(gradient);
         var g2 = pff.backward(g1);
         var g3 = gradient + norm2.backward(g2);
-        var g4 = dropout2.backward(g3);
+        var g4 = dropout1.backward(g3);
         var (g5Q, g5K, g5V) = mulAtt.backward(g4, l);
         var g5all = g5Q + g5K + g5V;
         return g3 + norm1.backward(g5all);

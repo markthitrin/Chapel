@@ -5,6 +5,7 @@ use Math;
 class Softmax {
     proc forward(ref tensor: [?D] real) : [D] real {
         domOutput = D;
+        output = Matrix(D);
         for i in D.dim(0) {
             ref rowIn = tensor[i, ..];
             ref rowOutput = output[i, ..];
